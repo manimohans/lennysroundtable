@@ -121,14 +121,19 @@ def main():
         4. Guests discuss and build on each other's ideas
         """)
 
+    # Initialize placeholder once per session to avoid it changing on reruns
+    if 'example_question' not in st.session_state:
+        st.session_state.example_question = random.choice(EXAMPLE_QUESTIONS)
+
     # Main content
     col_name, col_question = st.columns([1, 3])
     with col_name:
-        user_name = st.text_input("Your Name", value="PM")
+        user_name = st.text_input("Your Name", value="PM", key="user_name")
     with col_question:
         question = st.text_input(
             "Your Question",
-            placeholder=f"e.g., {random.choice(EXAMPLE_QUESTIONS)}",
+            placeholder=f"e.g., {st.session_state.example_question}",
+            key="question_input",
         )
 
     generate_btn = st.button("🚀 Generate Discussion", type="primary")
