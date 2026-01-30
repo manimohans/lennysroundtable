@@ -1,5 +1,6 @@
 """Ingest transcripts into ChromaDB using LlamaIndex."""
 
+import os
 import sys
 from pathlib import Path
 
@@ -9,6 +10,13 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
+# Load .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent.parent / ".env")
+except ImportError:
+    pass  # dotenv not installed, use environment variables directly
+
 from .parser import parse_transcript, chunk_turn
 
 
@@ -16,7 +24,7 @@ from .parser import parse_transcript, chunk_turn
 CHROMA_PATH = Path("chroma_db")
 COLLECTION_NAME = "transcripts"
 PARENT_COLLECTION_NAME = "transcripts_parents"
-EMBEDDING_MODEL = "embeddinggemma"
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma")
 
 # Chunk sizes for parent-child retrieval pattern
 # Small chunks for precise matching, large chunks for coherent context

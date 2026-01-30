@@ -4,19 +4,17 @@ A RAG-powered app where podcast guests answer your questions based on what they 
 
 ## What You Get
 
-- **300+ transcripts** from Lenny's Podcast, pre-embedded and ready to query
+- **300+ transcripts** from Lenny's Podcast included
 - **292 unique speakers** including product leaders from Stripe, Netflix, Airbnb, and more
 - **Multi-round discussions** where experts build on each other's perspectives
 
-## Quick Start (5 minutes)
-
-The repo includes pre-embedded transcripts using `embeddinggemma`. Just configure your LLM and go.
+## Quick Start
 
 ### Step 1: Clone and install
 
 ```bash
-git clone https://github.com/yourusername/lennys-roundtable.git
-cd lennys-roundtable
+git clone https://github.com/manimohans/lennysroundtable.git
+cd lennysroundtable
 uv sync
 ```
 
@@ -31,10 +29,14 @@ cp .env.example .env
 Edit `.env` with your provider:
 
 <details>
-<summary><b>Option A: Ollama (Local, Free)</b></summary>
+<summary><b>Option A: Ollama (Local, Free) - Recommended</b></summary>
 
 1. Install [Ollama](https://ollama.ai/)
-2. Pull a model: `ollama pull gemma3:4b` (or any model you prefer)
+2. Pull models:
+   ```bash
+   ollama pull embeddinggemma   # For embeddings
+   ollama pull gemma3:4b        # For generation (or any model you prefer)
+   ```
 3. Set in `.env`:
    ```
    LLM_BASE_URL=http://localhost:11434/v1
@@ -48,7 +50,11 @@ Edit `.env` with your provider:
 
 1. Install [LM Studio](https://lmstudio.ai/)
 2. Download a model and start the local server
-3. Set in `.env`:
+3. **You still need Ollama for embeddings:**
+   ```bash
+   ollama pull embeddinggemma
+   ```
+4. Set in `.env`:
    ```
    LLM_BASE_URL=http://localhost:1234/v1
    LLM_MODEL=your-loaded-model-name
@@ -60,7 +66,11 @@ Edit `.env` with your provider:
 <summary><b>Option C: OpenAI (Cloud, Paid)</b></summary>
 
 1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
-2. Set in `.env`:
+2. **You still need Ollama for embeddings:**
+   ```bash
+   ollama pull embeddinggemma
+   ```
+3. Set in `.env`:
    ```
    LLM_BASE_URL=https://api.openai.com/v1
    LLM_MODEL=gpt-4o-mini
@@ -68,7 +78,37 @@ Edit `.env` with your provider:
    ```
 </details>
 
-### Step 3: Run the app
+### Step 3: Generate embeddings (one-time setup)
+
+> **Why isn't this included?** The vector database (`chroma_db/`) is ~600MB, which exceeds GitHub's file size limits. You need to generate it locally once. This takes about 50 minutes on CPU.
+
+Make sure Ollama is running, then:
+
+```bash
+ollama pull embeddinggemma    # If you haven't already
+uv run python -m roundtable.ingest
+```
+
+You'll see progress like:
+```
+Found 301 transcript files
+[301/301] Parsing: Zoelle Egner.txt
+
+Created 17482 parent documents
+Unique speakers: 292
+
+Storing parent documents...
+Creating child chunks for vector indexing...
+Embedding and indexing child chunks (this may take a while)...
+Generating embeddings: 100%|████████| 2048/2048 [04:08<00:00]
+...
+
+Ingestion complete!
+Parent chunks: 17482
+Child chunks: 22435
+```
+
+### Step 4: Run the app
 
 ```bash
 uv run streamlit run roundtable/app.py
@@ -105,9 +145,9 @@ Click **Save as Markdown** to download the full conversation.
 
 ---
 
-## Advanced: Sync Latest Transcripts
+## Sync Latest Transcripts (Optional)
 
-Want to update with the newest podcast episodes? You'll need to re-embed after syncing.
+Want to update with the newest podcast episodes?
 
 ### Step 1: Get Dropbox access
 
@@ -126,17 +166,11 @@ Want to update with the newest podcast episodes? You'll need to re-embed after s
 uv run python sync_transcripts.py
 ```
 
-### Step 3: Re-embed (required after sync)
+### Step 3: Re-embed
 
 ```bash
-# Make sure Ollama is running with embeddinggemma
-ollama pull embeddinggemma
-
-# Re-run ingestion
 uv run python -m roundtable.ingest --reset
 ```
-
-This takes ~50 minutes for 300 transcripts on CPU.
 
 ---
 
@@ -171,12 +205,16 @@ We use a two-tier chunking strategy:
 
 This gives you accurate retrieval AND rich context.
 
-### Embeddings
+### Why embeddinggemma?
 
-The included `chroma_db/` was embedded using **`embeddinggemma`** via Ollama. If you re-embed, use the same model for consistency:
+The ingestion pipeline uses `embeddinggemma` via Ollama because:
+- Free and runs locally
+- Good quality embeddings for this use case
+- Consistent results across setups
 
-```bash
-ollama pull embeddinggemma
+If you want to use a different embedding model, edit `roundtable/ingest.py`:
+```python
+EMBEDDING_MODEL = "your-preferred-model"
 ```
 
 ---
@@ -184,7 +222,7 @@ ollama pull embeddinggemma
 ## Project Structure
 
 ```
-lennys-roundtable/
+lennysroundtable/
 ├── roundtable/
 │   ├── app.py           # Streamlit UI
 │   ├── generator.py     # LLM response generation
@@ -192,7 +230,7 @@ lennys-roundtable/
 │   ├── ingest.py        # Embedding pipeline
 │   └── parser.py        # Transcript parsing
 ├── transcripts/         # 300+ podcast transcripts
-├── chroma_db/           # Pre-embedded vectors (ready to use)
+├── chroma_db/           # Generated locally (not in repo)
 ├── .env.example         # Configuration template
 └── sync_transcripts.py  # Fetch new episodes
 ```
@@ -222,16 +260,16 @@ lennys-roundtable/
 ## Troubleshooting
 
 **"No relevant speakers found"**
-- The `chroma_db/` folder may be missing or corrupted
-- Re-run: `uv run python -m roundtable.ingest --reset`
+- You need to run the embedding step first: `uv run python -m roundtable.ingest`
+- Make sure Ollama is running with `embeddinggemma`
 
 **"Connection refused" errors**
 - Make sure your LLM provider is running (Ollama/LM Studio)
 - Check the `LLM_BASE_URL` in `.env`
 
-**Responses are generic or hallucinated**
-- Try a larger/better model
-- The included embeddings work best with `embeddinggemma`
+**Embedding step fails**
+- Ensure Ollama is running: `ollama serve`
+- Pull the embedding model: `ollama pull embeddinggemma`
 
 **Slow generation**
 - Local models depend on your hardware
