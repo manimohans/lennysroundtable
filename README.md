@@ -29,7 +29,7 @@ cp .env.example .env
 Edit `.env` with your provider:
 
 <details>
-<summary><b>Option A: Ollama (Local, Free) - Recommended</b></summary>
+<summary><b>Option A: Ollama (Local, Free) - Tested ✓</b></summary>
 
 1. Install [Ollama](https://ollama.ai/)
 2. Pull models:
@@ -46,7 +46,7 @@ Edit `.env` with your provider:
 </details>
 
 <details>
-<summary><b>Option B: LM Studio (Local, Free)</b></summary>
+<summary><b>Option B: LM Studio (Local, Free) - Tested ✓</b></summary>
 
 1. Install [LM Studio](https://lmstudio.ai/)
 2. Download a model and start the local server
@@ -205,17 +205,28 @@ We use a two-tier chunking strategy:
 
 This gives you accurate retrieval AND rich context.
 
-### Why embeddinggemma?
+### Speaker Scoring
 
-The ingestion pipeline uses `embeddinggemma` via Ollama because:
+Speakers are ranked by relevance to your question:
+
+1. **Cosine similarity**: Each child chunk gets a similarity score (0-1, higher = more relevant)
+2. **Aggregation**: Sum all similarity scores for a speaker's matching chunks
+3. **Normalization**: Divide by √(num_chunks) to balance speakers with many vs. few appearances
+
+```
+score = sum(similarities) / sqrt(num_chunks)
+```
+
+Typical scores range from ~0.5 (weakly relevant) to ~2.0 (highly relevant). The top 5 speakers are selected for the discussion.
+
+### Embedding Model
+
+The default embedding model is `embeddinggemma` via Ollama:
 - Free and runs locally
 - Good quality embeddings for this use case
 - Consistent results across setups
 
-If you want to use a different embedding model, edit `roundtable/ingest.py`:
-```python
-EMBEDDING_MODEL = "your-preferred-model"
-```
+To use a different model, set `EMBEDDING_MODEL` in your `.env` file before running ingestion.
 
 ---
 
@@ -247,11 +258,16 @@ lennysroundtable/
 | `LLM_MODEL` | Model name | `gemma3:4b` |
 | `LLM_API_KEY` | API key (if needed) | `not-needed` or `sk-...` |
 
-### Embedding Settings (`roundtable/ingest.py`)
+### Embedding Settings (`.env`)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `EMBEDDING_MODEL` | `embeddinggemma` | Ollama embedding model |
+
+### Chunk Settings (`roundtable/ingest.py`)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
 | `CHILD_CHUNK_SIZE` | 512 | Smaller = more precise matching |
 | `PARENT_CHUNK_SIZE` | 2048 | Larger = more context for LLM |
 
