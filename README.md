@@ -8,7 +8,7 @@ A RAG-powered app where podcast guests answer your questions based on what they 
 - **292 unique speakers** including product leaders from Stripe, Netflix, Airbnb, and more
 - **Multi-round discussions** where experts build on each other's perspectives
 
-<img width="1649" height="931" alt="image" src="https://github.com/user-attachments/assets/c0ef010c-211a-469f-8f62-0389bc7cb052" />
+<img width="1653" height="858" alt="image" src="https://github.com/user-attachments/assets/17875dca-9635-4ba4-ab84-2bd3162ccfe4" />
 
 ## Quick Start
 
@@ -309,4 +309,5 @@ lennysroundtable/
 ## License
 
 MIT
+
 
