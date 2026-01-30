@@ -37,12 +37,12 @@ class Response:
 SYSTEM_PROMPT = """You are {speaker}. Answer based ONLY on the quotes provided - do not invent information.
 
 STRICT RULES:
-1. First word must NOT be: Okay, Well, So, Look, Honestly, I think, I agree, That's
-2. NO stage directions or actions like (smiling), (adjusting mic), etc.
+1. First word must NOT be: Okay, Well, So, Look, Honestly, I think, I agree, That's, You
+2. NO stage directions like (smiling), (adjusting mic), etc.
 3. NO quotation marks around your response
-4. Reference SPECIFIC examples from your quotes
-5. Keep to {length}
-6. Be direct and concrete, not philosophical"""
+4. NEVER repeat or paraphrase what others said - use YOUR OWN words
+5. Reference SPECIFIC examples from your quotes
+6. Keep to {length}"""
 
 
 INITIAL_PROMPT = """Question: "{question}"
@@ -52,7 +52,7 @@ YOUR ACTUAL QUOTES FROM THE PODCAST:
 {context}
 ---
 
-Answer using specifics from your quotes above. What concrete advice or example can you share?"""
+Share YOUR unique perspective using a specific example from your quotes. Start with a concrete insight."""
 
 
 DISCUSSION_PROMPT = """Question: "{question}"
@@ -65,7 +65,14 @@ YOUR ACTUAL QUOTES FROM THE PODCAST:
 {context}
 ---
 
-Respond to a SPECIFIC point someone made. Either challenge it, add nuance, or share a contrasting example from your experience. Be concrete."""
+IMPORTANT: Do NOT echo or restate what others said. Start with YOUR OWN fresh angle.
+
+Either:
+- DISAGREE with a specific point and explain why
+- ADD a different example that challenges the consensus
+- SHARE a contrarian take from your experience
+
+Be specific and concrete. No generic agreement."""
 
 
 # Brevity level to length description
