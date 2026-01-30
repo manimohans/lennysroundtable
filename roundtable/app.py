@@ -1,9 +1,22 @@
 """Streamlit UI for the Roundtable Discussion app."""
 
+import random
 import streamlit as st
 
 from roundtable.retriever import Retriever
 from roundtable.generator import Generator, Response
+
+
+# Rotating example questions
+EXAMPLE_QUESTIONS = [
+    "How do I tell my CEO their idea is bad?",
+    "How do I say no without getting fired?",
+    "How do I prioritize when everything is P0?",
+    "Is product-market fit just vibes?",
+    "How do I survive a reorg?",
+    "What do I do when engineering hates my spec?",
+    "How do I pretend to be data-driven?",
+]
 
 
 # Speaker colors for consistent visual identity
@@ -81,7 +94,7 @@ def main():
     st.title("🎙️ Lenny's Roundtable")
     st.markdown("*Thank you so much for being here, and welcome to the roundtable!*")
     st.markdown(
-        "Ask a question and get answers from podcast guests based on what they actually said."
+        "Lenny asked the questions. Now it's your turn."
     )
 
     # Initialize session state
@@ -116,7 +129,7 @@ def main():
         with col_question:
             question = st.text_input(
                 "Your Question",
-                placeholder="e.g., How should I prioritize features as a PM?",
+                placeholder=f"e.g., {random.choice(EXAMPLE_QUESTIONS)}",
             )
 
         generate_btn = st.form_submit_button("🚀 Generate Discussion", type="primary")
@@ -155,7 +168,6 @@ def main():
 
         # Generate discussion with streaming
         try:
-            import random
             generator = Generator()
             all_rounds = []
             all_responses = []
