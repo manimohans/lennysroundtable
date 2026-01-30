@@ -121,18 +121,17 @@ def main():
         4. Guests discuss and build on each other's ideas
         """)
 
-    # Main content - use form so Enter key submits
-    with st.form("question_form"):
-        col_name, col_question = st.columns([1, 3])
-        with col_name:
-            user_name = st.text_input("Your Name", value="PM")
-        with col_question:
-            question = st.text_input(
-                "Your Question",
-                placeholder=f"e.g., {random.choice(EXAMPLE_QUESTIONS)}",
-            )
+    # Main content
+    col_name, col_question = st.columns([1, 3])
+    with col_name:
+        user_name = st.text_input("Your Name", value="PM")
+    with col_question:
+        question = st.text_input(
+            "Your Question",
+            placeholder=f"e.g., {random.choice(EXAMPLE_QUESTIONS)}",
+        )
 
-        generate_btn = st.form_submit_button("🚀 Generate Discussion", type="primary")
+    generate_btn = st.button("🚀 Generate Discussion", type="primary")
 
     if generate_btn and question:
         with st.spinner("Finding relevant experts..."):
