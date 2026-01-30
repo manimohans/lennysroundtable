@@ -4,7 +4,7 @@ A RAG-powered app where podcast guests answer your questions based on what they 
 
 ## What You Get
 
-- **300+ transcripts** from Lenny's Podcast included
+- **300+ transcripts** from Lenny's Podcast included (Thanks to https://www.lennysnewsletter.com/ - go subscribe, now)
 - **292 unique speakers** including product leaders from Stripe, Netflix, Airbnb, and more
 - **Multi-round discussions** where experts build on each other's perspectives
 
@@ -309,5 +309,6 @@ lennysroundtable/
 ## License
 
 MIT
+
 
 
