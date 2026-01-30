@@ -79,6 +79,7 @@ def main():
     )
 
     st.title("🎙️ Lenny's Roundtable")
+    st.markdown("*Thank you so much for being here, and welcome to the roundtable!*")
     st.markdown(
         "Ask a question and get answers from podcast guests based on what they actually said."
     )
