@@ -107,20 +107,18 @@ def main():
         4. Guests discuss and build on each other's ideas
         """)
 
-    # Main content
-    col_name, col_question = st.columns([1, 3])
-    with col_name:
-        user_name = st.text_input("Your Name", value="PM", key="user_name_input")
-    with col_question:
-        question = st.text_input(
-            "Your Question",
-            placeholder="e.g., How should I prioritize features as a PM?",
-            key="question_input"
-        )
+    # Main content - use form so Enter key submits
+    with st.form("question_form"):
+        col_name, col_question = st.columns([1, 3])
+        with col_name:
+            user_name = st.text_input("Your Name", value="PM")
+        with col_question:
+            question = st.text_input(
+                "Your Question",
+                placeholder="e.g., How should I prioritize features as a PM?",
+            )
 
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        generate_btn = st.button("🚀 Generate Discussion", type="primary", use_container_width=True)
+        generate_btn = st.form_submit_button("🚀 Generate Discussion", type="primary")
 
     if generate_btn and question:
         with st.spinner("Finding relevant experts..."):
