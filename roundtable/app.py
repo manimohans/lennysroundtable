@@ -1,5 +1,6 @@
 """Streamlit UI for the Roundtable Discussion app."""
 
+import html
 import random
 import streamlit as st
 
@@ -40,10 +41,12 @@ def get_speaker_color(speaker: str, speakers: list[str]) -> str:
 def render_response(response: Response, speakers: list[str]):
     """Render a single response with styled speaker name."""
     color = get_speaker_color(response.speaker, speakers)
+    safe_speaker = html.escape(response.speaker)
+    safe_text = html.escape(response.text)
     st.markdown(
         f'<div style="border-left: 4px solid {color}; padding-left: 12px; margin-bottom: 16px;">'
-        f'<strong style="color: {color};">{response.speaker}</strong>'
-        f'<p>{response.text}</p></div>',
+        f'<strong style="color: {color};">{safe_speaker}</strong>'
+        f'<p>{safe_text}</p></div>',
         unsafe_allow_html=True
     )
 
@@ -139,6 +142,11 @@ def main():
     generate_btn = st.button("🚀 Generate Discussion", type="primary")
 
     if generate_btn and question:
+        question = question.strip()
+        if len(question) > 2000:
+            st.error("Question is too long. Please keep it under 2000 characters.")
+            return
+
         with st.spinner("Finding relevant experts..."):
             try:
                 retriever = Retriever()
@@ -160,10 +168,11 @@ def main():
         for i, (col, ctx) in enumerate(zip(cols, speaker_contexts)):
             with col:
                 color = SPEAKER_COLORS[i % len(SPEAKER_COLORS)]
+                safe_speaker = html.escape(ctx.speaker)
                 st.markdown(
                     f'<div style="text-align: center; padding: 10px; '
                     f'border: 2px solid {color}; border-radius: 8px;">'
-                    f'<strong style="color: {color};">{ctx.speaker}</strong><br>'
+                    f'<strong style="color: {color};">{safe_speaker}</strong><br>'
                     f'<small>Score: {ctx.score:.2f}</small></div>',
                     unsafe_allow_html=True
                 )
@@ -190,9 +199,10 @@ def main():
 
                 for ctx in contexts:
                     color = get_speaker_color(ctx.speaker, st.session_state.speakers)
+                    safe_speaker = html.escape(ctx.speaker)
                     st.markdown(
                         f'<div style="border-left: 4px solid {color}; padding-left: 12px; margin-bottom: 16px;">'
-                        f'<strong style="color: {color};">{ctx.speaker}</strong></div>',
+                        f'<strong style="color: {color};">{safe_speaker}</strong></div>',
                         unsafe_allow_html=True
                     )
 

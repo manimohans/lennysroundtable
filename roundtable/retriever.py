@@ -151,44 +151,28 @@ class Retriever:
             speaker_parents[speaker].append(chunk_data)
 
         # Score speakers
-        speaker_scores = []
-        for speaker, chunks in speaker_parents.items():
-            if len(chunks) < min_chunks:
-                continue
-
-            # Sum similarity scores, normalize by sqrt(num_chunks)
+        def _score_speaker(speaker: str, chunks: list[dict]) -> SpeakerContext:
             total_similarity = sum(c['similarity'] for c in chunks)
             score = total_similarity / math.sqrt(len(chunks))
-
-            # Sort chunks by similarity (highest first)
             chunks.sort(key=lambda x: x['similarity'], reverse=True)
+            return SpeakerContext(speaker=speaker, score=score, chunks=chunks)
 
-            speaker_scores.append(SpeakerContext(
-                speaker=speaker,
-                score=score,
-                chunks=chunks,
-            ))
-
-        # Sort by score (highest first)
+        speaker_scores = [
+            _score_speaker(speaker, chunks)
+            for speaker, chunks in speaker_parents.items()
+            if len(chunks) >= min_chunks
+        ]
         speaker_scores.sort(key=lambda x: x.score, reverse=True)
 
-        # Handle case where we don't have enough speakers with min_chunks
+        # If not enough speakers met min_chunks, include those below threshold
         if len(speaker_scores) < top_k:
+            scored_names = {sc.speaker for sc in speaker_scores}
             for speaker, chunks in speaker_parents.items():
-                if any(sc.speaker == speaker for sc in speaker_scores):
+                if speaker in scored_names:
                     continue
                 if len(speaker_scores) >= top_k:
                     break
-
-                total_similarity = sum(c['similarity'] for c in chunks)
-                score = total_similarity / math.sqrt(len(chunks))
-                chunks.sort(key=lambda x: x['similarity'], reverse=True)
-
-                speaker_scores.append(SpeakerContext(
-                    speaker=speaker,
-                    score=score,
-                    chunks=chunks,
-                ))
+                speaker_scores.append(_score_speaker(speaker, chunks))
 
             speaker_scores.sort(key=lambda x: x.score, reverse=True)
 

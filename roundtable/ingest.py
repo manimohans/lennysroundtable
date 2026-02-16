@@ -20,17 +20,18 @@ except ImportError:
 from .parser import parse_transcript, chunk_turn
 
 
-# ChromaDB settings
-CHROMA_PATH = Path("chroma_db")
+# ChromaDB settings — resolve relative to project root, not CWD
+_PROJECT_ROOT = Path(__file__).parent.parent
+CHROMA_PATH = _PROJECT_ROOT / "chroma_db"
 COLLECTION_NAME = "transcripts"
 PARENT_COLLECTION_NAME = "transcripts_parents"
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma")
 
-# Chunk sizes for parent-child retrieval pattern
+# Chunk sizes for parent-child retrieval pattern (configurable via env)
 # Small chunks for precise matching, large chunks for coherent context
-CHILD_CHUNK_SIZE = 512
-CHILD_CHUNK_OVERLAP = 50
-PARENT_CHUNK_SIZE = 2048  # Returned to LLM for context
+CHILD_CHUNK_SIZE = int(os.getenv("CHILD_CHUNK_SIZE", "512"))
+CHILD_CHUNK_OVERLAP = int(os.getenv("CHILD_CHUNK_OVERLAP", "50"))
+PARENT_CHUNK_SIZE = int(os.getenv("PARENT_CHUNK_SIZE", "2048"))  # Returned to LLM for context
 
 
 def get_chroma_client() -> chromadb.PersistentClient:
@@ -131,13 +132,13 @@ def ingest_transcripts(transcripts_dir: Path, reset: bool = False):
         try:
             client.delete_collection(COLLECTION_NAME)
             print("Deleted existing child collection")
-        except Exception:
-            pass
+        except ValueError:
+            pass  # Collection doesn't exist
         try:
             client.delete_collection(PARENT_COLLECTION_NAME)
             print("Deleted existing parent collection")
-        except Exception:
-            pass
+        except ValueError:
+            pass  # Collection doesn't exist
 
     # Check existing data
     try:
@@ -152,10 +153,10 @@ def ingest_transcripts(transcripts_dir: Path, reset: bool = False):
             client.delete_collection(COLLECTION_NAME)
             try:
                 client.delete_collection(PARENT_COLLECTION_NAME)
-            except Exception:
-                pass
-    except Exception:
-        pass  # Collection doesn't exist
+            except ValueError:
+                pass  # Parent collection doesn't exist
+    except ValueError:
+        pass  # Collection doesn't exist yet
 
     # Create collections
     child_collection = client.get_or_create_collection(
