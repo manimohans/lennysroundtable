@@ -92,6 +92,45 @@ class Generator:
         self.model = model
         self.client = OpenAI(base_url=base_url, api_key=api_key)
 
+    def _build_messages(
+        self,
+        speaker_context: SpeakerContext,
+        question: str,
+        previous_responses: list[Response] | None = None,
+        brevity: int = 2,
+    ) -> list[dict]:
+        """Build the system + user messages for the LLM call."""
+        context = speaker_context.get_context_text(max_chunks=3)
+        length = BREVITY_MAP.get(brevity, "2-3 sentences")
+
+        system = SYSTEM_PROMPT.format(
+            speaker=speaker_context.speaker,
+            length=length,
+        )
+
+        if not previous_responses:
+            prompt = INITIAL_PROMPT.format(
+                question=question,
+                context=context,
+            )
+        else:
+            other_responses = [r for r in previous_responses if r.speaker != speaker_context.speaker]
+            prev_text = "\n\n".join([
+                f"[{r.speaker}]: {r.text}"
+                for r in other_responses
+            ]) if other_responses else "No other responses yet."
+
+            prompt = DISCUSSION_PROMPT.format(
+                question=question,
+                previous_responses=prev_text,
+                context=context,
+            )
+
+        return [
+            {"role": "system", "content": system},
+            {"role": "user", "content": prompt},
+        ]
+
     def generate_response(
         self,
         speaker_context: SpeakerContext,
@@ -115,38 +154,7 @@ class Generator:
         Returns:
             Response object with the generated text
         """
-        context = speaker_context.get_context_text(max_chunks=3)
-        length = BREVITY_MAP.get(brevity, "2-3 sentences")
-
-        system = SYSTEM_PROMPT.format(
-            speaker=speaker_context.speaker,
-            length=length,
-        )
-
-        if not previous_responses:
-            # First speaker - no prior context
-            prompt = INITIAL_PROMPT.format(
-                question=question,
-                context=context,
-            )
-        else:
-            # Has context from previous speakers (exclude self)
-            other_responses = [r for r in previous_responses if r.speaker != speaker_context.speaker]
-            prev_text = "\n\n".join([
-                f"[{r.speaker}]: {r.text}"
-                for r in other_responses
-            ]) if other_responses else "No other responses yet."
-
-            prompt = DISCUSSION_PROMPT.format(
-                question=question,
-                previous_responses=prev_text,
-                context=context,
-            )
-
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ]
+        messages = self._build_messages(speaker_context, question, previous_responses, brevity)
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -154,9 +162,12 @@ class Generator:
             temperature=0.7,
         )
 
+        if not response.choices:
+            raise ValueError(f"LLM returned empty response for {speaker_context.speaker}")
+
         return Response(
             speaker=speaker_context.speaker,
-            text=response.choices[0].message.content,
+            text=response.choices[0].message.content or "",
             round_num=round_num,
         )
 
@@ -175,49 +186,21 @@ class Generator:
         Yields:
             str chunks as they're generated
         """
-        context = speaker_context.get_context_text(max_chunks=3)
-        length = BREVITY_MAP.get(brevity, "2-3 sentences")
+        messages = self._build_messages(speaker_context, question, previous_responses, brevity)
 
-        system = SYSTEM_PROMPT.format(
-            speaker=speaker_context.speaker,
-            length=length,
-        )
-
-        if not previous_responses:
-            # First speaker - no prior context
-            prompt = INITIAL_PROMPT.format(
-                question=question,
-                context=context,
-            )
-        else:
-            # Has context from previous speakers (exclude self)
-            other_responses = [r for r in previous_responses if r.speaker != speaker_context.speaker]
-            prev_text = "\n\n".join([
-                f"[{r.speaker}]: {r.text}"
-                for r in other_responses
-            ]) if other_responses else "No other responses yet."
-
-            prompt = DISCUSSION_PROMPT.format(
-                question=question,
-                previous_responses=prev_text,
-                context=context,
+        try:
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7,
+                stream=True,
             )
 
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
-        ]
-
-        stream = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7,
-            stream=True,
-        )
-
-        for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            yield f"\n\n[Error generating response: {e}]"
 
     def run_discussion(
         self,
