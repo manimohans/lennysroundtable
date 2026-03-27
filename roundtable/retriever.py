@@ -4,9 +4,8 @@ import math
 from dataclasses import dataclass
 
 import chromadb
-from llama_index.embeddings.ollama import OllamaEmbedding
 
-from .ingest import CHROMA_PATH, COLLECTION_NAME, PARENT_COLLECTION_NAME, EMBEDDING_MODEL
+from .ingest import CHROMA_PATH, COLLECTION_NAME, PARENT_COLLECTION_NAME, get_embedding_model
 
 
 @dataclass
@@ -34,10 +33,7 @@ class Retriever:
         self.client = chromadb.PersistentClient(path=str(CHROMA_PATH))
         self.child_collection = self.client.get_collection(COLLECTION_NAME)
         self.parent_collection = self.client.get_collection(PARENT_COLLECTION_NAME)
-        self.embed_model = OllamaEmbedding(
-            model_name=EMBEDDING_MODEL,
-            base_url="http://localhost:11434",
-        )
+        self.embed_model = get_embedding_model()
 
     def embed_query(self, query: str) -> list[float]:
         """Generate embedding for a query."""

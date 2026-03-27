@@ -7,7 +7,6 @@ from pathlib import Path
 import chromadb
 from llama_index.core import Document, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.vector_stores.chroma import ChromaVectorStore
 
 # Load .env file
@@ -25,7 +24,14 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 CHROMA_PATH = _PROJECT_ROOT / "chroma_db"
 COLLECTION_NAME = "transcripts"
 PARENT_COLLECTION_NAME = "transcripts_parents"
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "embeddinggemma")
+
+# Embedding provider: "ollama" (default) or "openai"
+EMBEDDING_PROVIDER = os.getenv("EMBEDDING_PROVIDER", "ollama")
+# Model name per provider — override via env if needed
+EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "text-embedding-3-small" if EMBEDDING_PROVIDER == "openai" else "embeddinggemma",
+)
 
 # Chunk sizes for parent-child retrieval pattern (configurable via env)
 # Small chunks for precise matching, large chunks for coherent context
@@ -39,11 +45,21 @@ def get_chroma_client() -> chromadb.PersistentClient:
     return chromadb.PersistentClient(path=str(CHROMA_PATH))
 
 
-def get_embedding_model() -> OllamaEmbedding:
-    """Get the Ollama embedding model."""
+def get_embedding_model():
+    """Get the configured embedding model (Ollama or OpenAI)."""
+    if EMBEDDING_PROVIDER == "openai":
+        from llama_index.embeddings.openai import OpenAIEmbedding
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY must be set when EMBEDDING_PROVIDER=openai"
+            )
+        return OpenAIEmbedding(model=EMBEDDING_MODEL, api_key=api_key)
+
+    from llama_index.embeddings.ollama import OllamaEmbedding
     return OllamaEmbedding(
         model_name=EMBEDDING_MODEL,
-        base_url="http://localhost:11434",
+        base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
     )
 
 
