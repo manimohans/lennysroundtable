@@ -65,31 +65,36 @@ Edit `.env` with your provider:
 </details>
 
 <details>
-<summary><b>Option C: OpenAI (Cloud, Paid)</b></summary>
+<summary><b>Option C: OpenAI (Cloud, No Ollama Required) - Tested ✓</b></summary>
 
 1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
-2. **You still need Ollama for embeddings:**
-   ```bash
-   ollama pull embeddinggemma
-   ```
-3. Set in `.env`:
+2. Set in `.env`:
    ```
    LLM_BASE_URL=https://api.openai.com/v1
    LLM_MODEL=gpt-4o-mini
    LLM_API_KEY=sk-your-api-key-here
+
+   EMBEDDING_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-api-key-here
    ```
+   With `EMBEDDING_PROVIDER=openai`, Ollama is **not required** — embeddings use `text-embedding-3-small` instead.
 </details>
 
 ### Step 3: Generate embeddings (one-time setup)
 
 > **Why isn't this included?** The vector database (`chroma_db/`) is ~600MB, which exceeds GitHub's file size limits. You need to generate it locally once. This takes about 50 minutes on CPU.
 
-Make sure Ollama is running, then:
-
+**If using Ollama embeddings (default):**
 ```bash
 ollama pull embeddinggemma    # If you haven't already
 uv run python -m roundtable.ingest
 ```
+
+**If using OpenAI embeddings (`EMBEDDING_PROVIDER=openai` in `.env`):**
+```bash
+uv run python -m roundtable.ingest
+```
+No Ollama needed — embeddings are generated via the OpenAI API (`text-embedding-3-small`).
 
 You'll see progress like:
 ```
@@ -185,7 +190,7 @@ User Question
      │
      ▼
 ┌─────────────────────────────────────┐
-│  Embed query (embeddinggemma)       │
+│  Embed query (Ollama or OpenAI)     │
 │  Search child chunks (512 chars)    │
 │  Return parent chunks (2048 chars)  │
 │  Rank speakers by relevance         │
@@ -223,12 +228,14 @@ Typical scores range from ~0.5 (weakly relevant) to ~2.0 (highly relevant). The 
 
 ### Embedding Model
 
-The default embedding model is `embeddinggemma` via Ollama:
-- Free and runs locally
-- Good quality embeddings for this use case
-- Consistent results across setups
+Two providers are supported, configured via `EMBEDDING_PROVIDER` in `.env`:
 
-To use a different model, set `EMBEDDING_MODEL` in your `.env` file before running ingestion.
+| Provider | Default model | Requires |
+|----------|--------------|---------|
+| `ollama` (default) | `embeddinggemma` | Ollama running locally |
+| `openai` | `text-embedding-3-small` | `OPENAI_API_KEY` |
+
+Override the model with `EMBEDDING_MODEL`. **Important**: the embedding model must stay consistent between ingestion and queries — if you re-ingest with a different model, delete `chroma_db/` first.
 
 ---
 
@@ -264,7 +271,10 @@ lennysroundtable/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `EMBEDDING_MODEL` | `embeddinggemma` | Ollama embedding model |
+| `EMBEDDING_PROVIDER` | `ollama` | Embedding backend: `ollama` or `openai` |
+| `EMBEDDING_MODEL` | `embeddinggemma` (ollama) / `text-embedding-3-small` (openai) | Embedding model name |
+| `OPENAI_API_KEY` | — | Required when `EMBEDDING_PROVIDER=openai` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama host (ollama provider only) |
 
 ### Chunk Settings (`roundtable/ingest.py`)
 
@@ -279,15 +289,20 @@ lennysroundtable/
 
 **"No relevant speakers found"**
 - You need to run the embedding step first: `uv run python -m roundtable.ingest`
-- Make sure Ollama is running with `embeddinggemma`
+- If using Ollama: make sure it's running with `embeddinggemma` pulled
 
 **"Connection refused" errors**
 - Make sure your LLM provider is running (Ollama/LM Studio)
 - Check the `LLM_BASE_URL` in `.env`
 
-**Embedding step fails**
+**Embedding step fails (Ollama)**
 - Ensure Ollama is running: `ollama serve`
 - Pull the embedding model: `ollama pull embeddinggemma`
+- Or switch to OpenAI embeddings: set `EMBEDDING_PROVIDER=openai` and `OPENAI_API_KEY` in `.env`
+
+**Embedding step fails (OpenAI)**
+- Check that `OPENAI_API_KEY` is set in `.env`
+- Verify the key is valid at https://platform.openai.com/api-keys
 
 **Slow generation**
 - Local models depend on your hardware
@@ -299,7 +314,7 @@ lennysroundtable/
 
 - **RAG Framework**: [LlamaIndex](https://www.llamaindex.ai/)
 - **Vector Store**: [ChromaDB](https://www.trychroma.com/)
-- **Embeddings**: `embeddinggemma` via Ollama
+- **Embeddings**: `embeddinggemma` via Ollama (default) or `text-embedding-3-small` via OpenAI
 - **LLM**: Any OpenAI-compatible API
 - **UI**: [Streamlit](https://streamlit.io/)
 - **Package Manager**: [uv](https://docs.astral.sh/uv/)
