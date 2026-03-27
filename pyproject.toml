@@ -13,6 +13,7 @@ dependencies = [
     "llama-index-vector-stores-chroma>=0.1",
     "python-dotenv>=1.0",
     "openai>=1.0",
+    "huggingface_hub>=0.20",
 ]
 
 [build-system]

@@ -1,11 +1,37 @@
 """Streamlit UI for the Roundtable Discussion app."""
 
 import html
+import os
 import random
 import streamlit as st
 
+
+def _load_streamlit_secrets() -> None:
+    """Copy Streamlit Cloud secrets into env vars before roundtable modules load.
+
+    roundtable.ingest and roundtable.generator read configuration (LLM_BASE_URL,
+    OPENAI_API_KEY, etc.) at module import time via os.getenv.  Loading secrets
+    here — before those imports — ensures the correct values are present.
+    """
+    _KNOWN_KEYS = (
+        "LLM_BASE_URL", "LLM_MODEL", "LLM_API_KEY",
+        "OPENAI_API_KEY", "EMBEDDING_PROVIDER", "EMBEDDING_MODEL",
+        "HF_REPO_ID", "OLLAMA_BASE_URL",
+    )
+    for key in _KNOWN_KEYS:
+        if key in st.secrets and key not in os.environ:
+            os.environ[key] = st.secrets[key]
+
+
+# Load secrets BEFORE importing roundtable modules (they read env at import time).
+try:
+    _load_streamlit_secrets()
+except Exception:
+    pass  # Running locally without secrets.toml — env vars or .env file will be used.
+
 from roundtable.retriever import Retriever
 from roundtable.generator import Generator, Response
+from roundtable.download_chroma import is_chroma_db_available, download_chroma_db
 
 
 # Rotating example questions
@@ -87,12 +113,35 @@ def generate_markdown(question: str, speakers: list[str], discussion: list[list[
     return "\n".join(lines)
 
 
+@st.cache_resource(show_spinner=False)
+def _ensure_chroma_db() -> bool:
+    """Download pre-built ChromaDB if missing.  Runs once per server instance."""
+    if is_chroma_db_available():
+        return True
+    hf_repo = os.getenv("HF_REPO_ID", "")
+    if not hf_repo:
+        return False
+    return download_chroma_db(hf_repo)
+
+
 def main():
     st.set_page_config(
         page_title="Lenny's Roundtable",
         page_icon="🎙️",
         layout="wide",
     )
+
+    # Auto-download pre-built ChromaDB when running on Streamlit Cloud.
+    hf_repo = os.getenv("HF_REPO_ID", "")
+    if hf_repo and not is_chroma_db_available():
+        with st.spinner("Downloading pre-built vector database (first run only, ~600 MB)…"):
+            ok = _ensure_chroma_db()
+        if not ok:
+            st.error(
+                "Failed to download the vector database. "
+                "Check that HF_REPO_ID is set correctly in your Streamlit secrets."
+            )
+            st.stop()
 
     st.title("🎙️ Lenny's Roundtable")
     st.markdown("*Thank you so much for being here, and welcome to the roundtable!*")
@@ -267,7 +316,8 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown(
-        "<small>Powered by RAG with ChromaDB, Ollama, and Streamlit</small>",
+        "<small>Powered by RAG with ChromaDB and Streamlit · "
+        "<a href='https://github.com/manimohans/lennysroundtable' target='_blank'>GitHub</a></small>",
         unsafe_allow_html=True
     )
 

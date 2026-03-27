@@ -2,6 +2,15 @@
 
 A RAG-powered app where podcast guests answer your questions based on what they actually said on Lenny's Podcast, then discuss with each other.
 
+## 🚀 Hosted Demo
+
+> **No installation required.**  The live demo uses a pre-built vector database
+> hosted on HuggingFace — users skip the 50-minute local ingest step entirely.
+
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/manimohans/lennysroundtable/main/roundtable/app.py)
+
+---
+
 ## What You Get
 
 - **300+ transcripts** from Lenny's Podcast included (Thanks to https://www.lennysnewsletter.com/ - go subscribe, now)
@@ -178,6 +187,52 @@ uv run python sync_transcripts.py
 ```bash
 uv run python -m roundtable.ingest --reset
 ```
+
+---
+
+## Deploying to Streamlit Cloud
+
+Host your own live demo in three steps.
+
+### Step 1: Build and upload the vector database
+
+Run the ingest pipeline locally first (see [Quick Start](#quick-start) above),
+then upload the resulting `chroma_db/` to HuggingFace:
+
+```bash
+pip install huggingface_hub
+huggingface-cli login          # once — creates ~/.cache/huggingface/token
+
+python scripts/upload_chroma.py --repo-id YOUR_HF_USERNAME/lennysroundtable-chroma
+```
+
+This creates a public HuggingFace dataset containing `chroma_db.tar.gz` (~600 MB).
+
+### Step 2: Fork & connect to Streamlit Cloud
+
+1. Fork this repo on GitHub.
+2. Go to [share.streamlit.io](https://share.streamlit.io) → **New app**.
+3. Point it to `roundtable/app.py` in your fork.
+
+### Step 3: Add secrets
+
+In **Settings → Secrets** on Streamlit Cloud, paste:
+
+```toml
+LLM_BASE_URL = "https://api.openai.com/v1"
+LLM_MODEL    = "gpt-4o-mini"
+LLM_API_KEY  = "sk-..."
+
+EMBEDDING_PROVIDER = "openai"
+OPENAI_API_KEY     = "sk-..."
+
+HF_REPO_ID = "YOUR_HF_USERNAME/lennysroundtable-chroma"
+```
+
+On first boot the app downloads the pre-built ChromaDB (~1–2 min) and caches it
+for the lifetime of the server instance.  Subsequent users see no delay.
+
+See `.streamlit/secrets.toml.example` for the full template.
 
 ---
 
